@@ -11,14 +11,22 @@ MessageClassType = TypeVar("MessageClassType", bound=BaseMessage)
 class MessageManager(BaseManager):
     def __init__(self, fn: Callable) -> None:
         super().__init__(fn)
-        self.function_start = self._load_class(self.fn, FunctionStart)
-        self.function_name = self._load_class(self.fn, FunctionName)
-        self.function_end = self._load_class(self.fn, FunctionEnd)
 
     def _load_class(
         self,
-        fn: Callable,
         message_class: Type[MessageClassType],
     ) -> Callable:
-        message = message_class(fn)
+        message = message_class(self.fn)
         return message
+
+    @property
+    def function_start(self):
+        return self._load_class(FunctionStart)
+
+    @property
+    def function_name(self):
+        return self._load_class(FunctionName)
+
+    @property
+    def function_end(self):
+        return self._load_class(FunctionEnd)

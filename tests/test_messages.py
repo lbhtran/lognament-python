@@ -8,9 +8,10 @@ from lognament.messages.headers import FunctionName, FunctionStart
 
 class TestMessage:
 
-    function_start_expected_msg = "=== Start executing function ==="
-    function_name_expected_msg = "Function name: do_something"
-    function_end_expected_msg = "=== End executing function ==="
+    fn_start_expected_msg = "START executing function"
+    fn_name_expected_msg = "Function name: do_something"
+    fn_end_expected_msg = "FINISH executing function"
+    fn_end_runtime_expected_msg = "Function execution time: 1.0000"
 
     def test_base(self, test_function, caplog):
         message = BaseMessage(fn=test_function)
@@ -28,31 +29,45 @@ class TestMessage:
         assert caplog.records[1].msg == "Function name: do_something"
 
     @pytest.mark.parametrize(
-        "message_class, expected_msg",
+        "message_class, msg_args, expected_msg, expected_logcount",
         [
             pytest.param(
-                FunctionStart, function_start_expected_msg, id="test_function_start"
+                FunctionStart, {}, fn_start_expected_msg, 1, id="test_function_start"
             ),
             pytest.param(
-                FunctionName, function_name_expected_msg, id="test_function_name"
+                FunctionName, {}, fn_name_expected_msg, 1, id="test_function_name"
             ),
             pytest.param(
-                FunctionEnd, function_end_expected_msg, id="test_function_end"
+                FunctionEnd,
+                {"run_time": 1.0},
+                fn_end_expected_msg,
+                2,
+                id="test_function_end",
             ),
         ],
     )
-    def test_single_message_class(
-        self, message_class, expected_msg, test_function, caplog
+    def test_message_class(
+        self,
+        message_class,
+        msg_args,
+        expected_msg,
+        expected_logcount,
+        test_function,
+        caplog,
     ):
+
         # use message in a manager
         def run_manager(fn):
             message = message_class(fn)
-            message()
+            if not msg_args:
+                message()
+            elif "run_time" in msg_args:
+                message(msg_args["run_time"])
             return
 
         run_manager(fn=test_function)
 
-        assert len(caplog.records) == 1
+        assert len(caplog.records) == expected_logcount
         assert caplog.records[0].levelname == "INFO"
         assert caplog.records[0].msg == expected_msg
         assert caplog.records[0].name == "do_something"
@@ -63,17 +78,18 @@ class TestMessage:
 
             messages.function_start()
             messages.function_name()
-            messages.function_end()
+            messages.function_end(1.0)
 
             return
 
         run_manager(fn=test_function)
 
-        assert len(caplog.records) == 3
+        assert len(caplog.records) == 4
         for record in caplog.records:
             assert record.levelname == "INFO"
             assert record.name == "do_something"
 
-        assert caplog.records[0].msg == self.function_start_expected_msg
-        assert caplog.records[1].msg == self.function_name_expected_msg
-        assert caplog.records[2].msg == self.function_end_expected_msg
+        assert caplog.records[0].msg == self.fn_start_expected_msg
+        assert caplog.records[1].msg == self.fn_name_expected_msg
+        assert caplog.records[2].msg == self.fn_end_expected_msg
+        assert caplog.records[3].msg == self.fn_end_runtime_expected_msg
