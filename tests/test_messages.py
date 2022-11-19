@@ -1,7 +1,8 @@
 import pytest
 
-from lognament.messages.base.base import BaseMessage
-from lognament.messages.footers.function_end import FunctionEnd
+from lognament.managers.message_manager import MessageManager
+from lognament.messages.base import BaseMessage
+from lognament.messages.footers import FunctionEnd
 from lognament.messages.headers import FunctionName, FunctionStart
 
 
@@ -40,7 +41,7 @@ class TestMessage:
             ),
         ],
     )
-    def test_single_header_message(
+    def test_single_message_class(
         self, message_class, expected_msg, test_function, caplog
     ):
         # use message in a manager
@@ -56,15 +57,13 @@ class TestMessage:
         assert caplog.records[0].msg == expected_msg
         assert caplog.records[0].name == "do_something"
 
-    def test_all_header_messages(self, test_function, caplog):
+    def test_message_manager(self, test_function, caplog):
         def run_manager(fn):
-            start_message = FunctionStart(fn)
-            name_message = FunctionName(fn)
-            end_message = FunctionEnd(fn)
+            messages = MessageManager(fn)
 
-            start_message()
-            name_message()
-            end_message()
+            messages.function_start()
+            messages.function_name()
+            messages.function_end()
 
             return
 
