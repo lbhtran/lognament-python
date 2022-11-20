@@ -2,8 +2,10 @@ import pytest
 
 from lognament.managers.message_manager import MessageManager
 from lognament.messages.base import BaseMessage
+from lognament.messages.errors.function_error import FunctionError
 from lognament.messages.footers import FunctionEnd
 from lognament.messages.headers import FunctionName, FunctionStart
+from lognament.utils.errors import MockError
 
 
 class TestMessage:
@@ -12,6 +14,9 @@ class TestMessage:
     fn_name_expected_msg = "Function name: do_something"
     fn_end_expected_msg = "FINISH executing function"
     fn_end_runtime_expected_msg = "Function execution time: 1.0000"
+    fn_err_expected_msg = (
+        "Error occurs while running 'do_something': This is a test error"
+    )
 
     def test_base(self, test_function, caplog):
         message = BaseMessage(fn=test_function)
@@ -46,7 +51,7 @@ class TestMessage:
             ),
         ],
     )
-    def test_message_class(
+    def test_info_message_class(
         self,
         message_class,
         msg_args,
@@ -70,6 +75,21 @@ class TestMessage:
         assert len(caplog.records) == expected_logcount
         assert caplog.records[0].levelname == "INFO"
         assert caplog.records[0].msg == expected_msg
+        assert caplog.records[0].name == "do_something"
+
+    def test_error_message_class(self, test_function, caplog):
+        def run_manager(fn):
+            try:
+                raise MockError("This is a test error")
+            except Exception as exc:
+                message = FunctionError(fn)
+                message(error_msg=exc)
+
+        run_manager(fn=test_function)
+
+        assert len(caplog.records) == 1
+        assert caplog.records[0].levelname == "ERROR"
+        assert caplog.records[0].msg == self.fn_err_expected_msg
         assert caplog.records[0].name == "do_something"
 
     def test_message_manager(self, test_function, caplog):
